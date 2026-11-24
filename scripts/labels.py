@@ -207,13 +207,24 @@ def check_guide(site, names):
     if not path.exists():
         return
     guide = json.loads(path.read_text(encoding="utf-8"))
-    titles = guide.get("titles", {})
-    if not titles:
-        return
-    known = set(names).union(load_names(site / "grh" / "names.txt.gz", View(site / "grh", []).n))
-    missing = sorted(set(titles).difference(known))
+    for goal in ("rh", "grh"):
+        for key in ("statement", "role"):
+            text = guide.get(goal, {}).get(key)
+            if not isinstance(text, str) or not text.strip():
+                raise LabelError(f"{path}: {goal}.{key} must contain text")
+    titles = guide.get("titles")
+    if not isinstance(titles, dict) or any(not isinstance(v, str) or not v.strip() for v in titles.values()):
+        raise LabelError(f"{path}: titles must map Lean names to nonempty text")
+    missing = set(titles)
+    missing.difference_update(names)
     if missing:
-        raise LabelError(f"{path} titles unknown declarations: {', '.join(missing)}")
+        with gzip.open(site / "grh" / "names.txt.gz", "rt", encoding="utf-8") as stream:
+            for line in stream:
+                missing.discard(line.rstrip("\n"))
+                if not missing:
+                    break
+    if missing:
+        raise LabelError(f"{path} titles unknown declarations: {', '.join(sorted(missing))}")
 
 
 class Witnesses:
@@ -251,7 +262,7 @@ def render(site, labels, index=None):
         {"revision": revision, "entries": entries}, ensure_ascii=False, separators=(",", ":")
     )
 
-    to_grh = [-1] * rh.n
+    to_grh = array("i", [-1]) * rh.n
     for j, i in enumerate(grh.arrays["rhId"]):
         if i >= 0:
             to_grh[i] = j
