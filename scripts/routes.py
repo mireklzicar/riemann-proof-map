@@ -59,9 +59,9 @@ def reference_levels(component, members, starts, offsets, dst, incoming, src):
     return down, levels[component]
 
 
-def build(graph, campaign, site):
+def build(graph_file, campaign, site):
     sys.path.insert(0, str(campaign / "tools"))
-    with graph.open("rb") as f:
+    with graph_file.open("rb") as f:
         g, roots, _, _ = pickle.load(f)
 
     def matrix(off, dst):
@@ -101,9 +101,9 @@ def build(graph, campaign, site):
         assert np.all(graph[up[up >= 0], idx[up >= 0]].A1) and np.all(
             graph[idx[down >= 0], down[down >= 0]].A1
         )
-        with gzip.open(out / "routes.bin.gz", "wb", compresslevel=6) as f:
-            for arr in (up.astype("<i4"), down.astype("<i4"), level.astype("<u2")):
-                f.write(arr.tobytes())
+        arrays = (up.astype("<i4"), down.astype("<i4"), level.astype("<u2"))
+        payload = b"".join(a.tobytes() for a in arrays)
+        (out / "routes.bin.gz").write_bytes(gzip.compress(payload, compresslevel=6, mtime=0))
         print(target, len(live), int(level[root]), flush=True)
 
 

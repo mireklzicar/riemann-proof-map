@@ -47,8 +47,9 @@ def build(site, lib):
                         el + 1,
                         ec,
                     ]
-        with gzip.open(out / "source-spans.bin.gz", "wb", compresslevel=6) as f:
-            f.write(spans.tobytes())
+        (out / "source-spans.bin.gz").write_bytes(
+            gzip.compress(spans.tobytes(), compresslevel=6, mtime=0)
+        )
         print(
             out.name,
             "exact",

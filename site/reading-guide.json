@@ -1,0 +1,24 @@
+{
+  "rh": {
+    "statement": "Every nontrivial zero of the Riemann zeta function has real part ½.",
+    "role": "At modulus one the Dirichlet L-function is ζ. The functional equation reflects a zero left of the critical line into the zero-free right half-plane."
+  },
+  "grh": {
+    "statement": "For every Dirichlet character, every zero of its L-function in 0 < Re(s) < 1 has real part ½.",
+    "role": "Passing to a primitive character preserves zeros in the open strip. The functional equation then reflects a zero across the critical line."
+  },
+  "titles": {
+    "LFunction_eq_zero_re": "Dirichlet zeros lie on the critical line",
+    "claimAll": "Half-plane, critical strip and zeta conclusions",
+    "Claim.strip": "From a zero-free half-plane to the critical line",
+    "Claim.prim_reflect": "Reflection for a primitive character",
+    "Claim.prim_zero": "Pass a zero to the inducing primitive character",
+    "Claim.gamma_ne_zero": "Nonvanishing of the gamma factor",
+    "Claim.factor_ne_zero": "Nonvanishing of a finite Euler factor",
+    "Claim.zeta": "Specialization to the zeta function",
+    "Claim.Strip": "Critical-strip statement for Dirichlet characters",
+    "Claim.HalfPlane": "Zero-free half-plane for Dirichlet L-functions",
+    "Claim.Zeta": "Critical-line statement for zeta",
+    "DirichletLZerosOnLine": "Critical-line statement for Dirichlet L-functions"
+  }
+}

@@ -162,7 +162,7 @@
   <h2>About the Riemann proof map</h2>
   <p>An interactive reading map by <a href="https://mireklzicar.com/">Miroslav Lžičař</a> for the Lean proof released by Levent Alpöge. <a href="https://github.com/mireklzicar/riemann-proof-map">Source code and editable labels ↗</a></p>
   <h3>How to read a branch</h3><p>Start at a conclusion and follow the declarations its Lean type or proof references. If every path to a declaration passes through the same intermediate result, that result <em>dominates</em> it. Connecting each declaration to its closest such predecessor gives a dominator tree.</p>
-  <p>The map computes that tree separately for classical RH and Dirichlet GRH. TMAP arranges the branches in two dimensions. At large hubs it groups siblings by similarity in their names and module paths. The optional similarity links show those groupings. Selecting a node reveals its actual dominators.</p>
+  <p>The map computes that tree separately for classical RH and Dirichlet GRH. TMAP arranges the classical tree in two dimensions. Shared declarations keep their positions in the Dirichlet view, so you can switch conclusions without losing your place. At large hubs it groups siblings by similarity in their names and module paths. The optional similarity links show those groupings. Selecting a node reveals its actual dominators.</p>
   <h3>Walking a proof</h3><p>A reading path follows real compiled references. Read forward from an input to the conclusion or backward to ask what a result uses. Many other paths exist. Project leaves can depend on Lean or Mathlib outside this map.</p>
   <p><strong>Progress</strong> measures dependency depth. Groups of mutually referring declarations count as one stage. Each stage is one more than the deepest prerequisite stage, and the selected conclusion is 100%. This is a structural scale. The source archive supplies no per-declaration discovery times.</p>
   <h3>Cite the visualization</h3><p>Miroslav Lžičař (2026). <em>Riemann Proof Map.</em> <a href="https://github.com/mireklzicar/riemann-proof-map">mireklzicar/riemann-proof-map</a>. <a href="https://github.com/mireklzicar/riemann-proof-map/blob/main/CITATION.cff">Citation file ↗</a></p>
@@ -249,25 +249,19 @@ async function fetchGz(url, onProgress) {
 const goal = new URLSearchParams(location.search).get("goal") === "grh" ? "grh" : "rh";
 const goalLabel = goal === "rh" ? "RH" : "Dirichlet GRH";
 const dataPrefix = goal === "grh" ? "grh/" : "";
-const endpointStatement = goal === "rh"
-  ? "Every nontrivial zero of the Riemann zeta function has real part ½."
-  : "For every Dirichlet character, every zero of its L-function in 0 < Re(s) < 1 has real part ½.";
-const terminalTitles = {
-  LFunction_eq_zero_re:"Dirichlet zeros lie on the critical line", claimAll:"Half-plane, critical strip and zeta conclusions",
-  "Claim.strip":"From a zero-free half-plane to the critical line","Claim.prim_reflect":"Reflection for a primitive character",
-  "Claim.prim_zero":"Pass a zero to the inducing primitive character","Claim.gamma_ne_zero":"Nonvanishing of the gamma factor",
-  "Claim.factor_ne_zero":"Nonvanishing of a finite Euler factor","Claim.zeta":"Specialization to the zeta function",
-  "Claim.Strip":"Critical-strip statement for Dirichlet characters","Claim.HalfPlane":"Zero-free half-plane for Dirichlet L-functions",
-  "Claim.Zeta":"Critical-line statement for zeta", DirichletLZerosOnLine:"Critical-line statement for Dirichlet L-functions"
-};
+let endpointStatement, endpointRole, terminalTitles;
 let comparison;
 const D = {}; // data
 let M;        // manifest
 async function load() {
   const bar = $("#bar i"), lt = $("#ltext");
-  const manifests = await Promise.all([fetch(dataPrefix + "manifest.json"), fetch("endpoints.json")]);
+  const manifests = await Promise.all([fetch(dataPrefix + "manifest.json"), fetch("endpoints.json"), fetch("reading-guide.json")]);
   if (manifests.some(r => !r.ok)) throw Error("The selected proof data could not be loaded");
-  [M, comparison] = await Promise.all(manifests.map(r => r.json()));
+  let guide;
+  [M, comparison, guide] = await Promise.all(manifests.map(r => r.json()));
+  endpointStatement = guide[goal].statement;
+  endpointRole = guide[goal].role;
+  terminalTitles = guide.titles;
   lt.textContent = "geometry";
   const prog = {};
   const update = () => { const s = Object.values(prog).reduce((a,p)=>a+p[0],0), t = Object.values(prog).reduce((a,p)=>a+p[1],0); bar.style.width = (t ? 100*s/t : 30) + "%"; };
@@ -653,7 +647,7 @@ function startWalk(anchor, short=false, pos) {
     initial=nodes.length-1;
     for(let v=D.up[anchor];v>=0;v=D.up[v])nodes.push(v);
   }
-  walk={anchor,short,nodes,pos:initial};
+  walk={anchor,short,nodes,pos:initial,repeats:new Set(nodes).size<nodes.length};
   moveWalk(Number.isInteger(pos) ? pos : initial);
 }
 function moveWalk(pos) {
@@ -673,6 +667,7 @@ function walkHTML(i){
     (i===M.root ? '<button id="walkFinal" class="btn">Final deduction</button>' : '')+'</div>';
   const pos=walk.pos, last=walk.nodes.length-1;
   return `<section class="walk"><strong>${walk.short?"Final deduction":"Dependency path"}</strong><small>Step ${pos+1} of ${last+1} · dependency stage ${D.stage[i]} of ${D.stage[M.root]}</small>
+    ${walk.repeats?"<small>This route revisits a declaration inside a mutually referring group.</small>":""}
     <input id="stepSlider" aria-label="Step along the reference path" type="range" min="0" max="${last}" value="${pos}">
     <div class="walkEnds"><button class="textBtn" id="firstStep">${walk.short?"First deduction":"First input"}</button><button class="textBtn" id="lastStep">Conclusion</button></div>
     <div class="walkControls"><button class="btn" id="prevStep" ${pos===0?"disabled":""}>← Previous</button>
@@ -683,10 +678,9 @@ function walkHTML(i){
 function info(i) {
   const el=$("#info");el.style.display="block";
   const a=D.annotations.get(i), endpoint=i===M.root;
-  const deduction=goal==="rh" ? "At modulus one the Dirichlet L-function is ζ. The functional equation reflects a zero left of the critical line into the zero-free right half-plane." :
-    "Passing to a primitive character preserves zeros in the open strip. The functional equation then reflects a zero across the critical line.";
+
   const summary=endpoint?endpointStatement:a?.statement;
-  const role=endpoint?deduction:a?.role;
+  const role=endpoint?endpointRole:a?.role;
   const module=D.modnames[D.module[i]], source="https://github.com/"+mirrorPath+"/blob/"+mirrorRev+"/"+modulePath(i);
   const kids=Array.from(D.kids.subarray(D.kidOff[i],D.kidOff[i+1])).sort((v,w)=>D.totals[w]-D.totals[v]);
   const row=v=>`<div data-v="${v}" title="${esc(D.names[v])}">${esc(human(v))}</div>`;
@@ -704,7 +698,7 @@ function info(i) {
     <div class="sec">Dominator chain from ${goalLabel}</div><div class="chain">${chain.map(row).join("")}</div>
     ${kids.length?`<div class="sec">Immediate branches · ${fmt(kids.length)}</div><div class="chain">${kids.slice(0,16).map(row).join("")}</div>`:""}
     ${Number.isInteger(a?.caller)?`<div class="sec">Direct caller cited in annotation</div><div class="chain">${row(a.caller)}</div>`:""}
-    <div class="sourceFooter"><a href="${projectURL}/blob/main/labels/annotations.json">Edit the glossary ↗</a>
+    <div class="sourceFooter"><a href="${projectURL}/blob/main/${endpoint || (!a && Object.hasOwn(terminalTitles,D.names[i])) ? "site/reading-guide.json" : "labels/annotations.json"}">Edit the reading notes ↗</a>
     ${a?.blueprint?`<a href="https://nasqret.github.io/riemann-rev/atlas/#n-${encodeURIComponent(a.blueprint)}">Blueprint note ↗</a>`:a?"Draft annotation":""}</div></details>`;
   el.querySelector(".close").onclick=()=>select(-1);
   el.querySelectorAll("[data-v]").forEach(d=>d.onclick=()=>select(+d.dataset.v,true));

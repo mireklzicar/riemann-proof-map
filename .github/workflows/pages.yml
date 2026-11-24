@@ -43,10 +43,10 @@ jobs:
           if [ -n "$links" ]; then
             echo "::error::Symlinks are not allowed in site/:"; echo "$links"; exit 1
           fi
-          test -s site/index.html || echo "::warning::site/index.html is missing; only the data files will be served"
-          for f in manifest.json endpoints.json annotations.json \
+          test -s site/index.html
+          for f in manifest.json endpoints.json reading-guide.json annotations.json routes.bin.gz source-spans.bin.gz \
                    names.txt.gz modules.txt.gz graph.bin.gz \
-                   grh/manifest.json grh/annotations.json grh/names.txt.gz grh/graph.bin.gz; do
+                   grh/manifest.json grh/annotations.json grh/names.txt.gz grh/graph.bin.gz grh/routes.bin.gz grh/source-spans.bin.gz; do
             test -s "site/$f" || { echo "::error::Missing or empty site/$f"; exit 1; }
           done
           for f in site/*.gz site/grh/*.gz; do gzip -t "$f"; done
