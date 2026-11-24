@@ -32,6 +32,6 @@ step name blocks; "$PYTHON" "$here/text_blocks.py" "$OUT"
 step viewer
 viewer="$(realpath "$here/../site")"
 if [ "$OUT" != "$viewer" ]; then
-  cp "$viewer/index.html" "$viewer/lookups.js" "$viewer/reading-guide.json" "$viewer/.nojekyll" "$OUT/"
+  cp "$viewer/index.html" "$viewer/lookups.js" "$viewer/reading-guide.json" "$viewer/social-preview.jpg" "$viewer/.nojekyll" "$OUT/"
 fi
 "$PYTHON" "$here/labels.py" "$OUT" --check

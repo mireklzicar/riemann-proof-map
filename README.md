@@ -8,6 +8,8 @@
 
 **An interactive proof map by [Miroslav Lžičař](https://mireklzicar.com/).** Explore the Lean formalization of classical RH and Dirichlet GRH released by Levent Alpöge. [Open the map](https://riemannmap.mireklzicar.com/) or [walk the four declarations in the final RH deduction](https://riemannmap.mireklzicar.com/?goal=rh#via=1213476&walk=final&step=0).
 
+[![Color-coded dependency map with the Riemann hypothesis selected and its Lean source displayed.](docs/proof-map.jpg)](https://riemannmap.mireklzicar.com/)
+
 The map has two views. Classical RH starts at `riemannHypothesis` and Dirichlet GRH for all characters starts at `LFunction_eq_zero_re`. Each view contains the declarations its endpoint reaches through compiled type and proof-body references, together with the immediate-dominator tree of that graph. A declaration dominates another when every reference path from the endpoint to the second passes through the first.
 
 | | Classical RH | Dirichlet GRH |
@@ -101,7 +103,7 @@ PYTHON=.venv/bin/python TMAP_PYTHON=.tmap-env/bin/python scripts/build_site.sh w
 | Source ranges for the Lean reader | [`source_spans.py`](scripts/source_spans.py) | `source-spans.bin.gz`, `grh/source-spans.bin.gz` |
 | Labels, with every cited caller checked in the full graph | [`labels.py`](scripts/labels.py) `--index` | `annotations.json`, `grh/annotations.json` |
 
-`build_site.sh` also copies `index.html`, `lookups.js`, `reading-guide.json` and `.nojekyll` from `site/` when the output is another directory, so the output can be served as it is. The numbering of declarations follows the module order of the graph dump. `baseline.pkl` stores objects defined by the drive's `tools/cone.py`. Only load a pickle you built yourself. The compiled archive comes from compiling third-party code. The pipeline reads it as data and never executes it.
+`build_site.sh` also copies `index.html`, `lookups.js`, `reading-guide.json`, `social-preview.jpg` and `.nojekyll` from `site/` when the output is another directory, so the output can be served as it is. The numbering of declarations follows the module order of the graph dump. `baseline.pkl` stores objects defined by the drive's `tools/cone.py`. Only load a pickle you built yourself. The compiled archive comes from compiling third-party code. The pipeline reads it as data and never executes it.
 
 ### Verification
 
