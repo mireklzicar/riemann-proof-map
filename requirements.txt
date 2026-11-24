@@ -1,0 +1,8 @@
+# Main pipeline environment (Python 3.11). The TMAP layout step uses env/tmap.yml.
+# scripts/labels.py needs only the Python standard library (3.9 or newer).
+numpy==1.26.4
+scipy==1.16.3
+numba==0.62.1
+llvmlite==0.45.1
+igraph==1.0.0
+texttable==1.7.0

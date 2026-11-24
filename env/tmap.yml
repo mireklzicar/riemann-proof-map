@@ -1,0 +1,12 @@
+# Layout environment for scripts/tmap_layout.py. TMAP 1.0.6 ships only as a conda
+# package for Python <= 3.9. env/tmap-linux-64.lock pins the exact linux-64 build.
+name: rh-map-tmap
+channels:
+  - tmap
+  - conda-forge
+dependencies:
+  - python=3.9.23
+  - tmap=1.0.6
+  - ogdf=1.2.0
+  - numpy=2.0.2
+  - scipy=1.13.1

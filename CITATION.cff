@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "If you use this map or its labels, please cite it as below. Please also credit Levent Alpöge for the Lean formalization."
+type: software
+version: "0.1.0"
+date-released: "2026-11-24"
+title: "Riemann Proof Map"
+abstract: "An interactive map of the compiled Lean proof of the Riemann Hypothesis and Dirichlet GRH released by Levent Alpöge. Each endpoint has its own immediate-dominator tree and shares a TMAP reference layout, with editable mathematical labels."
+authors:
+  - family-names: "Lžičař"
+    given-names: "Miroslav"
+    website: "https://mireklzicar.com/"
+repository-code: "https://github.com/mireklzicar/riemann-proof-map"
+url: "https://riemannmap.mireklzicar.com/"
+license: MIT
+keywords:
+  - Riemann Hypothesis
+  - Lean
+  - dominator tree
+  - proof visualization
+  - TMAP
+references:
+  - type: software
+    title: "riemann-hypothesis (Lean formalization)"
+    authors:
+      - family-names: "Alpöge"
+        given-names: "Levent"
+    repository-code: "https://github.com/leanprover-community/riemann-hypothesis"
+    commit: "40e56bab026552e089d7afcfeff08d2defb9c005"
+  - type: software
+    title: "riemann-rev illustrated blueprint"
+    authors:
+      - family-names: "Naskręcki"
+        given-names: "Bartosz"
+    repository-code: "https://github.com/nasqret/riemann-rev"
+    commit: "ae05a37f374c31eae7e57e16722f5d7689f3e138"
+    license: 0BSD
+  - type: article
+    title: "Visualization of very large high-dimensional data sets as minimum spanning trees"
+    authors:
+      - family-names: "Probst"
+        given-names: "Daniel"
+      - family-names: "Reymond"
+        given-names: "Jean-Louis"
+    journal: "Journal of Cheminformatics"
+    volume: 12
+    start: 12
+    year: 2020
+    doi: "10.1186/s13321-020-0416-x"

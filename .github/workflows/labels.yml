@@ -1,0 +1,23 @@
+name: Label check
+
+on:
+  push:
+    paths: ["labels/**", "site/**", "scripts/labels.py", "tests/**", ".github/workflows/labels.yml"]
+  pull_request:
+    paths: ["labels/**", "site/**", "scripts/labels.py", "tests/**", ".github/workflows/labels.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: python scripts/labels.py site --check
+      - run: python -m unittest discover -s tests -v
