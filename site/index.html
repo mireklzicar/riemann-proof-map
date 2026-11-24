@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Riemann proof map · RH and Dirichlet GRH</title>
+<script>
+const graphPreload = document.createElement("link");
+graphPreload.rel = "preload"; graphPreload.as = "fetch"; graphPreload.crossOrigin = "anonymous";
+graphPreload.href = new URLSearchParams(location.search).get("goal") === "grh" ? "grh/graph.bin.gz" : "graph.bin.gz";
+document.head.append(graphPreload);
+</script>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -77,7 +83,7 @@
   #tip span { color: var(--muted); font-size: 11px; }
   #help { right: 14px; bottom: 14px; padding: 8px 12px; color: var(--muted); font-size: 11.5px; }
   #help kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--text); }
-  #loading { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: var(--bg); transition: opacity .6s; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; z-index: 10; background: var(--bg); }
   #loading div { width: 260px; }
   #bar { height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 10px; }
   #bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
@@ -165,12 +171,13 @@
   <p>The map computes that tree separately for classical RH and Dirichlet GRH. TMAP arranges the classical tree in two dimensions. Shared declarations keep their positions in the Dirichlet view, so you can switch conclusions without losing your place. At large hubs it groups siblings by similarity in their names and module paths. The optional similarity links show those groupings. Selecting a node reveals its actual dominators.</p>
   <h3>Walking a proof</h3><p>A reading path follows real compiled references. Read forward from an input to the conclusion or backward to ask what a result uses. Many other paths exist. Project leaves can depend on Lean or Mathlib outside this map.</p>
   <p><strong>Progress</strong> measures dependency depth. Groups of mutually referring declarations count as one stage. Each stage is one more than the deepest prerequisite stage, and the selected conclusion is 100%. This is a structural scale. The source archive supplies no per-declaration discovery times.</p>
-  <h3>Cite the visualization</h3><p>Miroslav Lžičař (2026). <em>Riemann Proof Map</em>, <a href="https://github.com/mireklzicar/riemann-proof-map/tree/v0.1.0">v0.1.0</a>. <a href="https://github.com/mireklzicar/riemann-proof-map/blob/main/CITATION.cff">Citation file ↗</a></p>
+  <h3>Cite the visualization</h3><p>Miroslav Lžičař (2026). <em>Riemann Proof Map</em>, <a href="https://github.com/mireklzicar/riemann-proof-map/tree/v0.2.0">v0.2.0</a>. <a href="https://github.com/mireklzicar/riemann-proof-map/blob/main/CITATION.cff">Citation file ↗</a></p>
   <h3>Sources and related work</h3><p>Levent Alpöge released the original Lean formalization. The graph was extracted with Lean 4.33.1 from proof revision <a href="https://github.com/leanprover-community/riemann-hypothesis/tree/40e56bab026552e089d7afcfeff08d2defb9c005">40e56bab</a>. Statement text is loaded on demand from the <a href="https://github.com/1337isnot1337/riemann-hypothesis-solved/tree/6193bb5ef61846c045c70c51ee05824f910d50cc">source mirror</a>. <a href="https://alpo.ge/remark.pdf">Alpöge’s announcement ↗</a></p>
   <p>Bartosz Naskręcki’s <a href="https://nasqret.github.io/riemann-rev/atlas/">illustrated blueprint</a> supplies titles and explanations for part of the glossary. Pengowray’s <a href="https://pengowray.github.io/riemann-zeta-proof-visualizer/#sources">proof treemap</a> inspired the source reader. Other annotations are editable drafts. <a href="https://github.com/mireklzicar/riemann-proof-map/blob/main/labels/annotations.json">Contribute a label ↗</a></p>
 </dialog>
 <div id="loading"><div><div style="font-weight:600">Loading the proof map…</div><div class="sub" id="ltext">manifest</div><div id="bar"><i></i></div></div></div>
 
+<script src="lookups.js"></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
@@ -215,8 +222,9 @@ function humanName(short) {
 const GENERIC_TOPIC = new Set(["Proofs", "Foundations", "Definitions", "CoreStatements", "Imports", "Basic", "Defs", "Aux", "Internal", "Common", "Core", "Setup", "Statement", "Statements", "Main"]);
 function origin(entry) { return entry.blueprint ? "Blueprint annotation" : "Draft annotation"; }
 function human(i) { const a = D.annotations.get(i); if (a) return a.caption || a.title;
+  if (!D.names[i]) return "Loading declaration…";
   if (Object.hasOwn(terminalTitles,D.names[i])) return terminalTitles[D.names[i]]; let h = D.human.get(i); if (h === undefined) { h = humanName(D.short[i]); D.human.set(i, h); } return h; }
-function topics(i) { const m = D.module[i]; let t = D.topics.get(m); if (!t) { t = topicPath(D.modnames[m]); D.topics.set(m, t); } return t; }
+function topics(i) { const m = D.module[i]; if (!D.modnames[m]) return []; let t = D.topics.get(m); if (!t) { t = topicPath(D.modnames[m]); D.topics.set(m, t); } return t; }
 function topicPath(mod) { return mod.split(".").slice(1).filter((c) => !GENERIC_TOPIC.has(c)).map(topicName); }
 const BRANCH_COLORS = ["#ff6b6b","#4dabf7","#ffd43b","#51cf66","#cc5de8","#ff922b","#22d3ee","#f783ac",
   "#94d82d","#845ef7","#20c997","#fab005","#e599f7","#74c0fc","#ffa8a8","#63e6be"];
@@ -255,44 +263,37 @@ const D = {}; // data
 let M;        // manifest
 async function load() {
   const bar = $("#bar i"), lt = $("#ltext");
-  const manifests = await Promise.all([fetch(dataPrefix + "manifest.json"), fetch("endpoints.json"), fetch("reading-guide.json")]);
-  if (manifests.some(r => !r.ok)) throw Error("The selected proof data could not be loaded");
-  let guide;
-  [M, comparison, guide] = await Promise.all(manifests.map(r => r.json()));
+  const json = async path => {
+    const res = await fetch(path);
+    if (!res.ok) throw Error(path + " " + res.status);
+    return res.json();
+  };
+  lt.textContent = "Map geometry";
+  let guide, seed, glossary, bin;
+  [M, comparison, guide, seed, glossary, bin] = await Promise.all([
+    json(dataPrefix + "manifest.json"), json("endpoints.json"), json("reading-guide.json"),
+    json("text/index.json"), json(dataPrefix + "annotations.json"),
+    fetchGz(dataPrefix + "graph.bin.gz", (bytes,total) => {
+      bar.style.width = (total ? Math.min(100, 100*bytes/total) : 30) + "%";
+    }).then(r => r.arrayBuffer()),
+  ]);
   endpointStatement = guide[goal].statement;
   endpointRole = guide[goal].role;
   terminalTitles = guide.titles;
-  lt.textContent = "geometry";
-  const prog = {};
-  const update = () => { const s = Object.values(prog).reduce((a,p)=>a+p[0],0), t = Object.values(prog).reduce((a,p)=>a+p[1],0); bar.style.width = (t ? 100*s/t : 30) + "%"; };
-  const [bin, names, mods, routeBytes, glossary] = await Promise.all([
-    fetchGz(dataPrefix + "graph.bin.gz", (s,t) => { prog.g = [s,t]; update(); }).then(r => r.arrayBuffer()),
-    fetchGz(dataPrefix + "names.txt.gz", (s,t) => { prog.n = [s,t]; update(); }).then(r => r.text()),
-    fetchGz("modules.txt.gz", (s,t) => { prog.m = [s,t]; update(); }).then(r => r.text()),
-    fetchGz(dataPrefix + "routes.bin.gz").then(r=>r.arrayBuffer()),
-    fetch(dataPrefix + "annotations.json").then(r => {
-      if (r.status === 404) return null; // Earlier static packs have only the identifier labels.
-      if (!r.ok) throw Error("annotations.json " + r.status);
-      return r.json();
-    }),
-  ]);
-  lt.textContent = "indexing";
+  lt.textContent = "Preparing map";
   const T = { float32: Float32Array, int32: Int32Array, uint32: Uint32Array, uint8: Uint8Array };
   for (const a of M.arrays) D[a.key] = new T[a.dtype](bin, a.offset, a.length);
-  D.names = names.split("\n");
-  D.short = D.names.map(s => { const k = s.lastIndexOf("."); return k < 0 ? s : s.slice(k + 1); });
-  D.human = new Map(); D.topics = new Map();
-  D.modnames = mods.split("\n");
-  D.annotations = new Map();
-  if (glossary && glossary.revision === M.revision) {
-    for (const [id, entry] of Object.entries(glossary.entries)) {
-      const i = Number(id);
-      if (entry.name === D.names[i] && entry.module === D.modnames[D.module[i]]) D.annotations.set(i, entry);
-    }
+  D.names = []; D.short = []; D.modnames = [];
+  D.human = new Map(); D.topics = new Map(); D.annotations = new Map();
+  D.blockSize = seed.blockSize;
+  for (const [i,name,module] of seed[goal]) rememberNode(i,name,module);
+  if (glossary.revision !== M.revision) throw Error("Glossary revision mismatch");
+  for (const [key,entry] of Object.entries(glossary.entries)) {
+    const i = Number(key);
+    rememberNode(i,entry.name,entry.module);
+    D.annotations.set(i,entry);
   }
   const n = M.n;
-  if (routeBytes.byteLength !== 10*n) throw Error("Reference index size mismatch");
-  D.up=new Int32Array(routeBytes,0,n); D.down=new Int32Array(routeBytes,4*n,n); D.stage=new Uint16Array(routeBytes,8*n,n);
   // Dominator children CSR.
   const cnt = new Uint32Array(n + 1);
   for (let i = 0; i < n; i++) if (D.idom[i] >= 0) cnt[D.idom[i] + 1]++;
@@ -406,8 +407,12 @@ function initGL() {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint32Array(ids),gl.STATIC_DRAW);
   }
   // Draw order: small nodes first so hubs sit on top.
-  const ord = new Uint32Array(n); for (let i = 0; i < n; i++) ord[i] = i;
-  ord.sort((p, q) => D.totals[p] - D.totals[q]);
+  // Stable counting sort preserves every draw-order tie of the original comparison sort.
+  const starts = new Uint32Array(n + 1), ord = new Uint32Array(n);
+  for (const size of D.totals) starts[size]++;
+  let offset = 0;
+  for (let k = 0; k <= n; k++) { const count = starts[k]; starts[k] = offset; offset += count; }
+  for (let i = 0; i < n; i++) ord[starts[D.totals[i]]++] = i;
   buf.order = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf.order); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ord, gl.STATIC_DRAW);
 }
 
@@ -634,7 +639,12 @@ async function showLean(i, box) {
   }
 }
 
-function startWalk(anchor, short=false, pos) {
+async function startWalk(anchor, short=false, pos) {
+  if (!D.stage) {
+    const selected = state.sel;
+    await loadRoutes();
+    if (selected !== state.sel) return;
+  }
   if(state.only) toggleOnly(false);
   let nodes, initial;
   if(short) {
@@ -649,6 +659,11 @@ function startWalk(anchor, short=false, pos) {
   }
   walk={anchor,short,nodes,pos:initial,repeats:new Set(nodes).size<nodes.length};
   moveWalk(Number.isInteger(pos) ? pos : initial);
+}
+async function walkFromButton(i,short,button) {
+  button.disabled=true;button.textContent="Loading route…";
+  try { await startWalk(i,short); }
+  catch { button.disabled=false;button.textContent="Retry route"; }
 }
 function moveWalk(pos) {
   if(!walk)return;
@@ -677,14 +692,23 @@ function walkHTML(i){
 
 function info(i) {
   const el=$("#info");el.style.display="block";
+  if (!hasNodeText(i)) {
+    el.innerHTML='<button class="close" aria-label="Close inspector">×</button><p>Loading declaration…</p>';
+    el.querySelector(".close").onclick=()=>select(-1);
+    loadNodeText(i).then(()=>{ if(state.sel===i){ info(i); dirty=true; } }).catch(()=>{
+      if(state.sel===i) el.querySelector("p").innerHTML='<button class="btn">Retry declaration</button>';
+      if(state.sel===i) el.querySelector("p button").onclick=()=>info(i);
+    });
+    return;
+  }
   const a=D.annotations.get(i), endpoint=i===M.root;
 
   const summary=endpoint?endpointStatement:a?.statement;
   const role=endpoint?endpointRole:a?.role;
   const module=D.modnames[D.module[i]], source="https://github.com/"+mirrorPath+"/blob/"+mirrorRev+"/"+modulePath(i);
   const kids=Array.from(D.kids.subarray(D.kidOff[i],D.kidOff[i+1])).sort((v,w)=>D.totals[w]-D.totals[v]);
-  const row=v=>`<div data-v="${v}" title="${esc(D.names[v])}">${esc(human(v))}</div>`;
-  const stage=Math.round(1000*D.stage[i]/D.stage[M.root])/10;
+  const row=v=>`<div data-v="${v}" title="${esc(D.names[v] || "")}">${esc(human(v))}</div>`;
+
   const chain=chainOf(i).reverse();
   el.innerHTML=`<button class="close" aria-label="Close inspector">×</button>
     <h2>${esc(human(i))}</h2>
@@ -693,8 +717,8 @@ function info(i) {
     ${walkHTML(i)}
     <details id="lean"><summary>Lean statement and source</summary><div class="sourceStatus"></div><pre class="leanCode">Loading…</pre>
     <div class="sourceFooter"><a href="${source}" target="_blank" rel="noopener">Open pinned Lean module ↗</a></div></details>
-    <details><summary>Graph details</summary><div class="full">${esc(D.names[i])}<br>${esc(module)}</div>
-    <p>${fmt(D.totals[i]-1)} declarations dominated · stage ${D.stage[i]} of ${D.stage[M.root]} (${stage}%)</p>
+    <details id="graphDetails"><summary>Graph details</summary><div class="full">${esc(D.names[i])}<br>${esc(module)}</div>
+    <p>${fmt(D.totals[i]-1)} declarations dominated <span class="stage"></span></p>
     <div class="sec">Dominator chain from ${goalLabel}</div><div class="chain">${chain.map(row).join("")}</div>
     ${kids.length?`<div class="sec">Immediate branches · ${fmt(kids.length)}</div><div class="chain">${kids.slice(0,16).map(row).join("")}</div>`:""}
     ${Number.isInteger(a?.caller)?`<div class="sec">Direct caller cited in annotation</div><div class="chain">${row(a.caller)}</div>`:""}
@@ -702,6 +726,22 @@ function info(i) {
     ${a?.blueprint?`<a href="https://nasqret.github.io/riemann-rev/atlas/#n-${encodeURIComponent(a.blueprint)}">Blueprint note ↗</a>`:a?"Draft annotation":""}</div></details>`;
   el.querySelector(".close").onclick=()=>select(-1);
   el.querySelectorAll("[data-v]").forEach(d=>d.onclick=()=>select(+d.dataset.v,true));
+  const details=el.querySelector("#graphDetails");
+  details.ontoggle = async () => {
+    if (!details.open) return;
+    try {
+      await Promise.all([
+        loadRoutes().then(() => {
+          const percent=Math.round(1000*D.stage[i]/D.stage[M.root])/10;
+          details.querySelector(".stage").textContent=" · stage "+D.stage[i]+" of "+D.stage[M.root]+" ("+percent+"%)";
+        }),
+        ...Array.from(details.querySelectorAll("[data-v]"), async row => {
+          const v=Number(row.dataset.v); await loadNodeText(v);
+          row.textContent=human(v); row.title=D.names[v];
+        }),
+      ]);
+    } catch { details.querySelector(".stage").textContent=" · Could not load details. Reopen to retry."; }
+  };
   const lean=el.querySelector("#lean");lean.ontoggle=()=>showLean(i,lean);
   if(walk) {
     $("#firstStep").onclick=()=>moveWalk(0);
@@ -712,8 +752,8 @@ function info(i) {
     $("#framePath").onclick=frameWalk;
     $("#exitWalk").onclick=()=>select(i,false);
   } else {
-    $("#walkStart").onclick=()=>startWalk(i);
-    if(endpoint)$("#walkFinal").onclick=()=>startWalk(i,true);
+    $("#walkStart").onclick=()=>walkFromButton(i,false,$("#walkStart"));
+    if(endpoint)$("#walkFinal").onclick=()=>walkFromButton(i,true,$("#walkFinal"));
   }
 }
 
@@ -858,12 +898,17 @@ function hoverPick(px, py) {
   const label = placed.find(b=>px>=b.x0 && px<=b.x0+b.w && py>=b.y0 && py<=b.y0+b.h);
   if (label) return label.i;
   const [wx, wy] = toWorld(px, py), s = Math.min(W, H) / 2 * cam.z; return pick(wx, wy, 9 / s); }
+let hoverTimer;
 function hover(px, py) {
   const i = hoverPick(px, py);
   if (i !== state.hover) { state.hover = i; dirty = true; }
   const tip = $("#tip");
   if (i < 0) { hideTip(); return; }
-  tip.innerHTML = `<b style="color:${colorOf(i)}">${esc(human(i))}</b><span class="topic">${topics(i).map(esc).join(" › ")}</span><code>${esc(D.names[i])}</code>${D.annotations.has(i) ? `<span class="annotation-origin">${esc(origin(D.annotations.get(i)))}</span><span class="annotation-statement">${esc(D.annotations.get(i).statement)}</span>` : ""}<span>${M.kinds[D.kind[i]]} · dominates ${fmt(D.totals[i] - 1)} · depth ${D.depth[i]}${D.domedge[i] ? "" : " · similarity link"}</span>`;
+  clearTimeout(hoverTimer);
+  if (!hasNodeText(i)) hoverTimer=setTimeout(() => loadNodeText(i).then(() => {
+    if(state.hover===i) hover(px,py);
+  }).catch(()=>{}),80);
+  tip.innerHTML = `<b style="color:${colorOf(i)}">${esc(human(i))}</b><span class="topic">${topics(i).map(esc).join(" › ")}</span><code>${esc(D.names[i] || "")}</code>${D.annotations.has(i) ? `<span class="annotation-origin">${esc(origin(D.annotations.get(i)))}</span><span class="annotation-statement">${esc(D.annotations.get(i).statement)}</span>` : ""}<span>${M.kinds[D.kind[i]]} · dominates ${fmt(D.totals[i] - 1)} · depth ${D.depth[i]}${D.domedge[i] ? "" : " · similarity link"}</span>`;
   tip.style.display = "block";
   const r = tip.getBoundingClientRect();
   tip.style.left = Math.min(W - r.width - 8, px + 14) + "px"; tip.style.top = Math.min(H - r.height - 8, py + 14) + "px";
@@ -873,9 +918,30 @@ cv.addEventListener("pointerleave", hideTip);
 
 // Search.
 let results = [], active = 0;
+function renderResults(R,message) {
+  R.innerHTML = results.map((i, k) => `<div class="res${k === 0 ? " active" : ""}" data-i="${i}" title="${esc(D.names[i])}"><span style="color:${colorOf(i)}">●</span><b>${esc(human(i))}<code>${esc(D.short[i])}</code></b><i>${fmt(D.totals[i] - 1)}</i></div>`).join("");
+  if (message || !results.length) {
+    const status=document.createElement("div"); status.className="sub";
+    status.textContent=message || "No declaration matches."; R.append(status);
+  }
+  R.querySelectorAll(".res").forEach(el => el.onclick = () => { select(+el.dataset.i, true); });
+}
+let searchGeneration=0;
 function search(q) {
+  const generation=++searchGeneration;
   q = q.trim().toLowerCase(); const R = $("#results");
   if (!q) { R.innerHTML = ""; results = []; return; }
+  if (!namesReady) {
+    results=[...new Set([...D.landmarks,...D.exclusive])]
+      .filter(i=>(!state.only || D.exclusive.has(i)) && [D.names[i], human(i), D.annotations.get(i)?.title]
+        .some(t=>t && t.toLowerCase().includes(q)))
+      .sort((a,b)=>D.totals[b]-D.totals[a]).slice(0,30);
+    active=0; renderResults(R,"Searching all Lean names…");
+    loadSearchIndex().then(()=>{ if(generation===searchGeneration) search(q); }).catch(()=>{
+      if(generation===searchGeneration) renderResults(R,"Could not load all Lean names. Edit the query to retry.");
+    });
+    return;
+  }
   const exact = [], pre = [], sub = [];
   for (let i = 0; i < M.n; i++) {
     if (state.only && !D.exclusive.has(i)) continue;
@@ -887,9 +953,7 @@ function search(q) {
   const labelHits = [...D.annotations].filter(([i, a]) => (!state.only || D.exclusive.has(i)) && [a.title,a.caption || ""].some(t=>t.toLowerCase().includes(q)));
   const matching = (exactTitle) => labelHits.filter(([, a]) => ([a.title,a.caption || ""].some(t=>t.toLowerCase() === q)) === exactTitle).map(([i]) => i);
   results = [...new Set([...by(exact), ...by(matching(true)), ...by(pre), ...comparison[goal].exclusive.filter(i=>human(i).toLowerCase().includes(q)), ...by(matching(false)), ...by(sub)])].slice(0, 30); active = 0;
-  R.innerHTML = results.map((i, k) => `<div class="res${k === 0 ? " active" : ""}" data-i="${i}" title="${esc(D.names[i])}"><span style="color:${colorOf(i)}">●</span><b>${esc(human(i))}<code>${esc(D.short[i])}</code></b><i>${fmt(D.totals[i] - 1)}</i></div>`).join("") ||
-    `<div class="sub" style="padding:4px 8px">No declaration matches.</div>`;
-  R.querySelectorAll(".res").forEach(el => el.onclick = () => { select(+el.dataset.i, true); });
+  renderResults(R);
 }
 $("#search").addEventListener("input", (e) => search(e.target.value));
 $("#search").addEventListener("keydown", (e) => {
@@ -908,7 +972,15 @@ addEventListener("keydown", (e) => {
   if (e.key === "+" || e.key === "=") zoomAt(W / 2, H / 2, 1.6);
   if (e.key === "-") zoomAt(W / 2, H / 2, 1 / 1.6);
 });
-$("#modes").addEventListener("click", (e) => { const m = e.target.dataset.m; if (!m) return; state.mode = m;
+let modeRequest=0;
+$("#modes").addEventListener("click", async (e) => { const m = e.target.dataset.m; if (!m) return;
+  const request=++modeRequest;
+  if(m==="progress" && !D.stage) { e.target.setAttribute("aria-busy","true");
+    try { await loadRoutes(); } catch { e.target.title="Could not load progress. Click to retry."; return; }
+    finally { e.target.removeAttribute("aria-busy"); }
+    if(request!==modeRequest) return;
+  }
+  state.mode = m;
   $("#modes").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === m)); recolor(); saveHash(); });
 $("#edges").onchange = (e) => { state.edges = e.target.checked; dirty = true; };
 $("#simedges").onchange = (e) => { state.sim = e.target.checked; dirty = true; };
@@ -962,15 +1034,15 @@ addEventListener("resize", resize);
     $("#only").onchange=e=>toggleOnly(e.target.checked);
     $("#comparison").querySelectorAll("button").forEach(b=>b.onclick=()=>locate(Number(b.dataset.id)));
     const p = new URLSearchParams(location.hash.slice(1));
+    if(p.get("mode")==="progress") await loadRoutes();
     if (["branch","dir","depth","reach","kind","progress"].includes(p.get("mode"))) { state.mode = p.get("mode"); $("#modes").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === state.mode)); recolor(); }
     if(p.get("only")==="1"){ $("#compare").click(); toggleOnly(true); }
-    cam.z = 0.25;
-    if (p.has("z")) { cam.x = +p.get("x"); cam.y = +p.get("y"); cam.z = 0.25; flyTo(+p.get("x"), +p.get("y"), +p.get("z"), 1400); }
-    else if (!state.only) flyTo(0, 0, 0.95, 1600);
-    if (p.has("via") && p.has("walk") && /^\d+$/.test(p.get("via")) && +p.get("via")<M.n) startWalk(+p.get("via"),p.get("walk")==="final",Number(p.get("step")));
+    if (p.has("z")) { cam.x=Number(p.get("x")); cam.y=Number(p.get("y")); cam.z=Number(p.get("z")); }
+    else if (!state.only) Object.assign(cam,{x:0,y:0,z:0.95});
+    if (p.has("via") && p.has("walk") && /^\d+$/.test(p.get("via")) && +p.get("via")<M.n) await startWalk(+p.get("via"),p.get("walk")==="final",Number(p.get("step")));
     else if (p.has("node")) { const i = +p.get("node"); if (i >= 0 && i < M.n) select(i, !p.has("z")); }
-    $("#loading").style.opacity = 0; setTimeout(() => $("#loading").remove(), 700);
-    requestAnimationFrame(frame);
+    frame();
+    $("#loading").remove();
   } catch (err) {
     $("#ltext").textContent = "Failed: " + err.message; console.error(err);
   }

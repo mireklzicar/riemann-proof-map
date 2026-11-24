@@ -44,12 +44,12 @@ jobs:
             echo "::error::Symlinks are not allowed in site/:"; echo "$links"; exit 1
           fi
           test -s site/index.html
-          for f in manifest.json endpoints.json reading-guide.json annotations.json routes.bin.gz source-spans.bin.gz \
+          for f in text/index.json text/names-0.gz text/modules-0.gz lookups.js manifest.json endpoints.json reading-guide.json annotations.json routes.bin.gz source-spans.bin.gz \
                    names.txt.gz modules.txt.gz graph.bin.gz \
                    grh/manifest.json grh/annotations.json grh/names.txt.gz grh/graph.bin.gz grh/routes.bin.gz grh/source-spans.bin.gz; do
             test -s "site/$f" || { echo "::error::Missing or empty site/$f"; exit 1; }
           done
-          for f in site/*.gz site/grh/*.gz; do gzip -t "$f"; done
+          for f in site/*.gz site/grh/*.gz site/text/*.gz; do gzip -t "$f"; done
           for f in site/*.json site/grh/*.json; do python3 -m json.tool "$f" > /dev/null; done
           du -ah site | sort -h | tail -n 15
 

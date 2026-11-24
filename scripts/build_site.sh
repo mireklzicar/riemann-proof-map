@@ -28,9 +28,10 @@ step Dirichlet GRH view; "$PYTHON" "$here/endpoints.py" "$GRAPH/baseline.pkl" "$
 step routes; "$PYTHON" "$here/routes.py" "$GRAPH/baseline.pkl" "$DRIVE" "$OUT"
 step source spans; "$PYTHON" "$here/source_spans.py" "$OUT" "$PROOF/.lake/build/lib/lean"
 step labels; "$PYTHON" "$here/labels.py" "$OUT" --index "$INDEX"
+step name blocks; "$PYTHON" "$here/text_blocks.py" "$OUT"
 step viewer
 viewer="$(realpath "$here/../site")"
 if [ "$OUT" != "$viewer" ]; then
-  cp "$viewer/index.html" "$viewer/reading-guide.json" "$viewer/.nojekyll" "$OUT/"
+  cp "$viewer/index.html" "$viewer/lookups.js" "$viewer/reading-guide.json" "$viewer/.nojekyll" "$OUT/"
 fi
 "$PYTHON" "$here/labels.py" "$OUT" --check

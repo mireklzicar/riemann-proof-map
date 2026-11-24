@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this map or its labels, please cite it as below. Please also credit Levent Alpöge for the Lean formalization."
 type: software
-version: "0.1.0"
+version: "0.2.0"
 date-released: "2026-11-24"
 title: "Riemann Proof Map"
 abstract: "An interactive map of the compiled Lean proof of the Riemann Hypothesis and Dirichlet GRH released by Levent Alpöge. Each endpoint has its own immediate-dominator tree and shares a TMAP reference layout, with editable mathematical labels."

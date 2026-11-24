@@ -33,7 +33,7 @@ Open [localhost:8000](http://localhost:8000/). The map data ship with the checko
 | Path | Contents |
 | --- | --- |
 | [`labels/annotations.json`](labels/annotations.json) | Canonical, editable label data |
-| [`site/`](site/) | The static site. `index.html` is the viewer. The other files are generated data, except the hand-written [`reading-guide.json`](site/reading-guide.json) |
+| [`site/`](site/) | The static site. `index.html` is the viewer. The viewer uses `lookups.js` and the editable [`reading-guide.json`](site/reading-guide.json). The graph and text packs are generated |
 | [`scripts/`](scripts/) | Label packer and the full data pipeline |
 | [`env/`](env/), [`requirements.txt`](requirements.txt) | Pinned environments |
 | [`tests/`](tests/) | Label packer checks against the published data |
@@ -96,15 +96,16 @@ PYTHON=.venv/bin/python TMAP_PYTHON=.tmap-env/bin/python scripts/build_site.sh w
 | TMAP layout of the dominator tree | [`tmap_layout.py`](scripts/tmap_layout.py) | `work/layout/` |
 | Classical RH packs | [`pack.py`](scripts/pack.py) | `manifest.json`, `graph.bin.gz`, `names.txt.gz`, `modules.txt.gz` |
 | Dirichlet GRH view and endpoint comparison | [`endpoints.py`](scripts/endpoints.py) | `grh/manifest.json`, `grh/graph.bin.gz`, `grh/names.txt.gz`, `endpoints.json` |
+| On-demand names, modules and initial landmark identifiers | [`text_blocks.py`](scripts/text_blocks.py) | `text/index.json`, `text/*.gz` |
 | Reference paths and structural stages | [`routes.py`](scripts/routes.py) | `routes.bin.gz`, `grh/routes.bin.gz` |
 | Source ranges for the Lean reader | [`source_spans.py`](scripts/source_spans.py) | `source-spans.bin.gz`, `grh/source-spans.bin.gz` |
 | Labels, with every cited caller checked in the full graph | [`labels.py`](scripts/labels.py) `--index` | `annotations.json`, `grh/annotations.json` |
 
-`build_site.sh` also copies `index.html`, `reading-guide.json` and `.nojekyll` from `site/` when the output is another directory, so the output can be served as it is. The numbering of declarations follows the module order of the graph dump. `baseline.pkl` stores objects defined by the drive's `tools/cone.py`. Only load a pickle you built yourself. The compiled archive comes from compiling third-party code. The pipeline reads it as data and never executes it.
+`build_site.sh` also copies `index.html`, `lookups.js`, `reading-guide.json` and `.nojekyll` from `site/` when the output is another directory, so the output can be served as it is. The numbering of declarations follows the module order of the graph dump. `baseline.pkl` stores objects defined by the drive's `tools/cone.py`. Only load a pickle you built yourself. The compiled archive comes from compiling third-party code. The pipeline reads it as data and never executes it.
 
 ### Verification
 
-We re-extracted all 175,187 compiled modules and reproduced the reference graph, then rebuilt both dominator trees and the TMAP layout. All 14 generated data files matched the published release after decompression, including coordinates, immediate dominators, reading paths, source ranges and packed annotations. The checked-in packs preserve these exact coordinates across machines.
+We re-extracted all 175,187 compiled modules and reproduced the reference graph, then rebuilt both dominator trees and the TMAP layout. All 14 original graph and annotation data files matched the published release after decompression, including coordinates, immediate dominators, reading paths, source ranges and packed annotations. The checked-in packs preserve these exact coordinates across machines.
 
 ### Pinned inputs
 
@@ -119,6 +120,12 @@ All pins are in [`scripts/pins.sh`](scripts/pins.sh).
 | [Illustrated blueprint](https://github.com/nasqret/riemann-rev/tree/ae05a37f374c31eae7e57e16722f5d7689f3e138) | `ae05a37f374c31eae7e57e16722f5d7689f3e138` |
 | Python | [`requirements.txt`](requirements.txt) for Python 3.11; [`env/tmap-linux-64.lock`](env/tmap-linux-64.lock) for the TMAP layout (Python 3.9, TMAP 1.0.6) |
 
+## Rendering and startup
+
+The map uses WebGL 2 for points and edges and a 2D canvas for labels. The opening view draws every declaration at its published coordinates. The first visit downloads approximately 14.5 MB for classical RH, including geometry, topology, landmark labels and navigation. Selecting an unlabelled declaration reads a small block of names. Full-name search and dependency walks fetch their respective indexes on first use. Both views reuse the same text blocks for shared declarations.
+
+To measure a cold start on your own machine, install the optional Playwright package and its Chromium browser, then run `python scripts/benchmark_startup.py https://riemannmap.mireklzicar.com/`. Each sample uses a fresh browser context. The reported time ends when a full point draw has reached the next animation frame and the loading screen has disappeared. Use `--mbps 40` for a controlled network comparison.
+
 ## Data files
 
 All arrays are little-endian. Node ids index `names.txt.gz` of the same view.
@@ -129,6 +136,7 @@ All arrays are little-endian. Node ids index `names.txt.gz` of the same view.
 | `graph.bin.gz` | Coordinates, layout parent, immediate dominator, subtree size, module, depth, branch, directory and kind per node. The GRH view adds `rhId`, the RH node of each shared declaration or −1 |
 | `names.txt.gz` | One fully qualified declaration name per line |
 | `modules.txt.gz` | Module names, indexed by the `module` array |
+| `text/` | Exact names and module paths in blocks of 8,192. GRH uses the RH node mapping plus its endpoint-specific names in `index.json` |
 | `routes.bin.gz` | `int32` breadth-first caller from the endpoint, `int32` next dependency on a longest descending path, `uint16` structural stage |
 | `source-spans.bin.gz` | `int32` start line, start column, end line, end column. A negative start line marks the enclosing source declaration of a generated one |
 | `annotations.json` | Packed labels keyed by node id |
@@ -136,7 +144,7 @@ All arrays are little-endian. Node ids index `names.txt.gz` of the same view.
 
 ## Citation and credits
 
-Miroslav Lžičař (2026). *Riemann Proof Map*, v0.1.0. [Versioned source](https://github.com/mireklzicar/riemann-proof-map/tree/v0.1.0).
+Miroslav Lžičař (2026). *Riemann Proof Map*, v0.2.0. [Versioned source](https://github.com/mireklzicar/riemann-proof-map/tree/v0.2.0).
 
 Please cite the map with [`CITATION.cff`](CITATION.cff) and credit Levent Alpöge for the formalization ([announcement](https://alpo.ge/remark.pdf)). Bartosz Naskręcki's [illustrated blueprint](https://nasqret.github.io/riemann-rev/atlas/) supplies titles and explanations for the blueprint labels under the 0BSD license. The other labels are drafts. Pengowray's [proof treemap](https://pengowray.github.io/riemann-zeta-proof-visualizer/#sources) inspired the source reader. The layout uses [TMAP](https://tmap.gdb.tools/).
 
